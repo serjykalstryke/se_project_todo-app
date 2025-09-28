@@ -1,17 +1,117 @@
-# Simple Todo App
+Simple Todo App
 
-Give a brief description of the project here. Feel free to give it a different name.
+A tiny, dependency-light Todo app built with vanilla JS modules and a sprinkle of OOP. Add tasks with an optional due date, validate inputs inline, and manage items with a clean, accessible UI.
 
-## Functionality
+Functionality
 
-Give a more detailed explanation of the project and its functionality.
+Add todos via a modal form
 
-## Technology
+Task name is required (minlength=2)
 
-Give a description of the technologies and techniques used. Pictures, GIFs, or screenshots that detail the project features are recommended.
+Date is optional, but validated when present:
 
-## Deployment
+blocks malformed/partial date input with a custom message
 
-This project is deployed on GitHub Pages:
+blocks past dates; today or future is allowed
 
-- ADD LINK HERE
+Inline validation UI (errors render under each field; submit button disables when invalid)
+
+Mark complete with a checkbox (state reflected in UI)
+
+Delete a todo
+
+UUIDs for new items
+
+Form resets only after a successful submit (closing the modal manually preserves current input)
+
+Technology
+
+HTML/CSS — semantic markup + small, responsive styles
+
+Vanilla JS (ES Modules) — no frameworks
+
+OOP components
+
+FormValidator — reusable, generic validator with cached DOM references and a validateField/resetValidation API
+
+Todo — renders a todo item from a <template>, caches refs (_nameEl, _dateEl, _checkboxEl, _deleteBtn)
+
+Custom date validation
+
+Listeners on input, change, and focusout for reliable native <input type="date"> behavior
+
+Custom messages for bad/partial input (e.g., “Please enter a valid date (MM-DD-YYYY)”)
+
+Past date check using string comparison to avoid timezone gotchas
+
+UUID v4 via ESM CDN import:
+
+import { v4 as uuidv4 } from 'https://jspm.dev/uuid';
+
+File Structure
+.
+├─ index.html
+├─ pages/
+│  ├─ index.css
+│  └─ index.js
+├─ components/
+│  ├─ FormValidator.js
+│  └─ Todo.js
+└─ utils/
+   └─ constants.js   // initialTodos, validationConfig
+
+Getting Started
+Run locally
+
+Clone the repo
+
+Serve with any static server (or open index.html directly)
+
+Quick dev server:
+
+npx serve .
+# or: python3 -m http.server 5500
+
+
+Open http://localhost:3000 (or whatever port your server prints)
+
+Key Scripts (optional)
+
+If you’re using a simple static server, no build step is required.
+
+Screenshots / GIFs (recommended)
+
+Drop images here to show the modal, validation states, and a few todos.
+
+./assets/screenshot-add.png
+
+./assets/screenshot-validation.png
+
+./assets/screenshot-list.png
+
+Deployment
+
+This project is deployed on GitHub Pages.
+
+Live demo: ADD LINK HERE
+(e.g., https://<your-username>.github.io/<repo-name>/)
+
+How to deploy (quick)
+
+Push your code to the main branch.
+
+In your repo: Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: main / root.
+
+Save. GitHub Pages will publish and give you a URL.
+
+Notes / Decisions
+
+Date field is optional by design; clearing it enables submit (assuming the name is valid).
+
+Manual close of the modal does not reset the form; fields reset only after successful submission (per spec).
+
+DOM queries for inputs/buttons are cached inside components for perf and clarity.
+
+License
+
+MIT (or your preferred license)

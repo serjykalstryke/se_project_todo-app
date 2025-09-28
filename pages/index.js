@@ -4,8 +4,6 @@ import { initialTodos, validationConfig } from "../utils/constants.js";
 import Todo from "../components/Todo.js";
 import FormValidator from "../components/FormValidator.js";
 
-
-
 // DOM Elements
 const addTodoButton = document.querySelector(".button_action_add");
 const addTodoPopup = document.querySelector("#add-todo-popup");
@@ -17,17 +15,9 @@ const openModal = (modal) => {
   modal.classList.add("popup_visible");
 };
 
+// ⬇️ Close now only hides the popup; no reset here per spec
 const closeModal = (modal) => {
   modal.classList.remove("popup_visible");
-
-  const form = modal.querySelector(".popup__form");
-  if (form) {
-    form.reset();
-    Array.from(form.elements).forEach(el => {
-      if (typeof el.setCustomValidity === "function") el.setCustomValidity("");
-    });
-    addTodoValidator.resetValidation();
-  }
 };
 
 const generateTodoValidator = (config, form) => {
@@ -40,40 +30,65 @@ const addTodoValidator = generateTodoValidator(validationConfig, addTodoForm);
 
 const generateTodo = (data) => {
   const todo = new Todo(data, "#todo-template");
-  const todoElement = todo.getView();
-  return todoElement;
+  return todo.getView();
 };
 
+// ⬇️ DRY helper
+const renderTodo = (item) => {
+  const el = generateTodo(item);
+  todosList.append(el);
+};
+
+// Open
 addTodoButton.addEventListener("click", () => {
-  addTodoValidator?.resetValidation();
+  addTodoValidator.resetValidation(); // okay to clear errors when opening
   openModal(addTodoPopup);
 });
 
+// Manual close preserves current input (no reset)
 addTodoCloseBtn.addEventListener("click", () => {
   closeModal(addTodoPopup);
 });
 
+// Submit
 addTodoForm.addEventListener("submit", (evt) => {
   evt.preventDefault();
-  const name = evt.target.name.value;
-  const dateInput = evt.target.date.value;
 
-  const date = new Date(dateInput);
-  date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+  // If invalid, let validator surface messages
+  if (!addTodoForm.checkValidity()) {
+    [...addTodoForm.querySelectorAll(validationConfig.inputSelector)]
+      .forEach((i) => addTodoValidator.validateField(i));
+    return;
+  }
+
+  const name = evt.target.name.value.trim();
+  const dateStr = evt.target.date.value;
+
+  // Optional date: store null if empty (avoids Invalid Date)
+  const date = dateStr ? new Date(dateStr) : null;
 
   const id = uuidv4();
 
-  const values = { name, date, id };
-  const todo = generateTodo(values);
-  todosList.append(todo);
+  // ⬇️ include completed default
+  const values = { id, name, date, completed: false };
+
+  renderTodo(values);
+
+  // ⬇️ Per spec: reset ONLY after successful submission
+  addTodoForm.reset();
+  // clear any custom validity (e.g., date)
+  Array.from(addTodoForm.elements).forEach((el) => {
+    if (typeof el.setCustomValidity === "function") el.setCustomValidity("");
+  });
+  addTodoValidator.resetValidation();
+
   closeModal(addTodoPopup);
 });
 
-initialTodos.forEach((item) => {
-  const todo = generateTodo(item);
-  todosList.append(todo);
-});
+// Seed initial items via the same helper (DRY)
+initialTodos.forEach(renderTodo);
 
+// --- Date validation (unchanged from your working version) ---
 const dateInput = addTodoForm.querySelector('#todo-date');
 
 function validateDate() {
@@ -93,7 +108,6 @@ function validateDate() {
       err.textContent = '';
       err.classList.remove(validationConfig.errorClass);
     }
-
     requestAnimationFrame(() => addTodoValidator.validateField(dateInput));
     return;
   }
@@ -116,6 +130,6 @@ function validateDate() {
   addTodoValidator.validateField(dateInput);
 }
 
-['input','change','blur'].forEach(evt =>
+['input','change','focusout'].forEach(evt =>
   dateInput.addEventListener(evt, validateDate)
 );
