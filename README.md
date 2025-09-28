@@ -1,4 +1,4 @@
-Simple Todo App
+Todo App
 
 A tiny, dependency-light Todo app built with vanilla JS modules and a sprinkle of OOP. Add tasks with an optional due date, validate inputs inline, and manage items with a clean, accessible UI.
 
@@ -48,18 +48,6 @@ UUID v4 via ESM CDN import:
 
 import { v4 as uuidv4 } from 'https://jspm.dev/uuid';
 
-File Structure
-.
-├─ index.html
-├─ pages/
-│  ├─ index.css
-│  └─ index.js
-├─ components/
-│  ├─ FormValidator.js
-│  └─ Todo.js
-└─ utils/
-   └─ constants.js   // initialTodos, validationConfig
-
 Getting Started
 Run locally
 
@@ -70,7 +58,6 @@ Serve with any static server (or open index.html directly)
 Quick dev server:
 
 npx serve .
-# or: python3 -m http.server 5500
 
 
 Open http://localhost:3000 (or whatever port your server prints)
@@ -79,22 +66,11 @@ Key Scripts (optional)
 
 If you’re using a simple static server, no build step is required.
 
-Screenshots / GIFs (recommended)
-
-Drop images here to show the modal, validation states, and a few todos.
-
-./assets/screenshot-add.png
-
-./assets/screenshot-validation.png
-
-./assets/screenshot-list.png
-
 Deployment
 
 This project is deployed on GitHub Pages.
 
-Live demo: ADD LINK HERE
-(e.g., https://<your-username>.github.io/<repo-name>/)
+Live demo: https://serjykalstryke.github.io/se_project_todo-app/
 
 How to deploy (quick)
 
@@ -114,4 +90,4 @@ DOM queries for inputs/buttons are cached inside components for perf and clarity
 
 License
 
-MIT (or your preferred license)
+MIT
