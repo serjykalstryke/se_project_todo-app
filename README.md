@@ -1,93 +1,157 @@
-Todo App
+# Todo App
 
-A tiny, dependency-light Todo app built with vanilla JS modules and a sprinkle of OOP. Add tasks with an optional due date, validate inputs inline, and manage items with a clean, accessible UI.
+A tiny, dependency-light Todo app built with vanilla ES modules and a sprinkle of OOP. Add tasks with an optional due date, validate inline, and manage items with a clean, accessible UI.
 
-Functionality
+## Features
 
-Add todos via a modal form
+* Add todos via a modal form
 
-Task name is required (minlength=2)
+  * **Task name** required (`minlength=2`)
+  * **Date** optional; validated when present:
 
-Date is optional, but validated when present:
+    * Blocks malformed/partial input with custom message
+    * Blocks past dates (today or future allowed)
+  * Inline validation UI (errors under fields; submit disabled when invalid)
+* Toggle **complete** with a checkbox (state reflected in UI)
+* **Delete** a todo
+* **UUID v4** for new items
+* Form **resets only after successful submit** (closing the modal preserves input)
+* **Dynamic counter**: shows total todos and how many are completed
 
-blocks malformed/partial date input with a custom message
+## Tech
 
-blocks past dates; today or future is allowed
+* **HTML/CSS** — semantic markup, small responsive styles
+* **Vanilla JS (ES modules)** — no frameworks
+* **OOP components** (loosely coupled):
 
-Inline validation UI (errors render under each field; submit button disables when invalid)
+  * `FormValidator` — reusable validator with `validateField` / `resetValidation`
+  * `Todo` — renders from a `<template>`; caches refs (`_nameEl`, `_dateEl`, `_checkboxEl`, `_deleteBtn`)
+  * `Section` — utility to render a list into a container
+  * `Popup` / `PopupWithForm` — modal open/close, ESC/overlay handling, form submit callback
+  * `TodoCounter` — tracks and renders “completed out of total”
+* **Custom date validation**
 
-Mark complete with a checkbox (state reflected in UI)
+  * Listeners on `input`, `change`, `focusout` for reliable native `<input type="date">`
+  * Custom messages (e.g., “Please enter a valid date (MM-DD-YYYY)”)
+  * Past-date check avoids timezone gotchas
+* **UUID v4** via ESM CDN:
 
-Delete a todo
+  ```js
+  import { v4 as uuidv4 } from 'https://jspm.dev/uuid';
+  ```
 
-UUIDs for new items
+## Architecture (OOP)
 
-Form resets only after a successful submit (closing the modal manually preserves current input)
+* **Section**
 
-Technology
+  * **Constructor:** `{ items, renderer, containerSelector }`
+  * **`renderItems()`** — iterates `items` and calls `renderer(item)` (renderer **creates & adds** one item)
+  * **`addItem(element)`** — appends a ready DOM element to the container
+* **Popup**
 
-HTML/CSS — semantic markup + small, responsive styles
+  * **Constructor:** `popupSelector`
+  * **`open()` / `close()`** — toggles modal; ESC listener
+  * **`setEventListeners()`** — close on X and on overlay
+* **PopupWithForm** (extends `Popup`)
 
-Vanilla JS (ES Modules) — no frameworks
+  * **Constructor:** `(popupSelector, handleFormSubmit)`
+  * **`_getInputValues()`** — collects form inputs
+  * **`setEventListeners()`** — wires submit + parent listeners
+* **TodoCounter**
 
-OOP components
+  * **Constructor:** `(todos, selector)` → initializes counts & renders
+  * **`updateCompleted(increment)`** — +/- completed, updates text
+  * **`updateTotal(increment)`** — +/- total, updates text
 
-FormValidator — reusable, generic validator with cached DOM references and a validateField/resetValidation API
+### Minimal usage examples
 
-Todo — renders a todo item from a <template>, caches refs (_nameEl, _dateEl, _checkboxEl, _deleteBtn)
+```js
+// Section
+const section = new Section({
+  items: initialTodos,
+  renderer: (data) => {
+    const el = new Todo(data, "#todo-template").getView();
+    section.addItem(el); // per spec: add DOM element via Section
+  },
+  containerSelector: ".todos__list",
+});
+section.renderItems();
+```
 
-Custom date validation
+```js
+// PopupWithForm
+const addPopup = new PopupWithForm("#add-todo-popup", (values) => {
+  const data = {
+    id: uuidv4(),
+    name: values.name.trim(),
+    date: values.date ? new Date(values.date) : null,
+    completed: false,
+  };
+  const el = new Todo(data, "#todo-template").getView();
+  section.addItem(el);
+  counter.updateTotal(true);
+  addPopup.close();
+});
+addPopup.setEventListeners();
+```
 
-Listeners on input, change, and focusout for reliable native <input type="date"> behavior
+```js
+// TodoCounter
+const counter = new TodoCounter(initialTodos, ".todos__counter");
+// Hook checkbox/delete events to call counter.updateCompleted()/updateTotal()
+```
 
-Custom messages for bad/partial input (e.g., “Please enter a valid date (MM-DD-YYYY)”)
+## Getting Started
 
-Past date check using string comparison to avoid timezone gotchas
+### Run locally
 
-UUID v4 via ESM CDN import:
-
-import { v4 as uuidv4 } from 'https://jspm.dev/uuid';
-
-Getting Started
-Run locally
-
-Clone the repo
-
-Serve with any static server (or open index.html directly)
+1. Clone the repo
+2. Serve with any static server (or open `index.html` directly)
 
 Quick dev server:
 
+```bash
 npx serve .
+```
 
+Open the printed URL (e.g., `http://localhost:3000`).
 
-Open http://localhost:3000 (or whatever port your server prints)
+### Project structure (key files)
 
-Key Scripts (optional)
+```
+/components
+  FormValidator.js
+  Popup.js
+  PopupWithForm.js
+  Section.js
+  Todo.js
+/utils
+  constants.js        # initialTodos, validationConfig
+index.js
+index.html
+styles.css
+```
 
-If you’re using a simple static server, no build step is required.
+## Deployment
 
-Deployment
+Deployed on GitHub Pages.
 
-This project is deployed on GitHub Pages.
+Live demo: [https://serjykalstryke.github.io/se_project_todo-app/](https://serjykalstryke.github.io/se_project_todo-app/)
 
-Live demo: https://serjykalstryke.github.io/se_project_todo-app/
+**How to deploy**
 
-How to deploy (quick)
+1. Push to `main`
+2. Repo → **Settings → Pages**
+   Source: *Deploy from a branch* → Branch: `main` / root
+3. Save and grab the URL
 
-Push your code to the main branch.
+## Notes / Decisions
 
-In your repo: Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: main / root.
+* Date field **optional by design**; clearing it enables submit (if name valid)
+* Manual close of modal **does not reset** form; reset only after successful submit
+* DOM queries cached inside components for perf & clarity
+* Components are **loosely coupled**: `index.js` wires interactions (creation, events, counters)
 
-Save. GitHub Pages will publish and give you a URL.
-
-Notes / Decisions
-
-Date field is optional by design; clearing it enables submit (assuming the name is valid).
-
-Manual close of the modal does not reset the form; fields reset only after successful submission (per spec).
-
-DOM queries for inputs/buttons are cached inside components for perf and clarity.
-
-License
+## License
 
 MIT
