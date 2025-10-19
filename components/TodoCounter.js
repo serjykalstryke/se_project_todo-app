@@ -1,21 +1,21 @@
 // components/TodoCounter.js
 class TodoCounter {
-  constructor(todos, selector) {
+  // selector: text node for counter (".counter__text")
+  // containerSelector: list container (".todos__list")
+  constructor(selector, containerSelector) {
     this._element = document.querySelector(selector);
-    this._completed = todos.filter(t => !!t.completed).length;
-    this._total = todos.length;
-    this._updateText();
+    this._container = document.querySelector(containerSelector);
+    this.updateFromDom();
   }
 
-  updateCompleted = (increment) => {
-    this._completed += increment ? 1 : -1;
-    if (this._completed < 0) this._completed = 0;
-    this._updateText();
-  };
+  updateFromDom = () => {
+    const items = Array.from(this._container.querySelectorAll("li.todo"));
+    const completed = items.filter(
+      (el) => el.querySelector(".todo__completed")?.checked
+    ).length;
 
-  updateTotal = (increment) => {
-    this._total += increment ? 1 : -1;
-    if (this._total < 0) this._total = 0;
+    this._total = items.length;
+    this._completed = completed;
     this._updateText();
   };
 

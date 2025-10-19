@@ -13,45 +13,44 @@ const addTodoButton = document.querySelector(".button_action_add");
 // build a Todo element from data
 const generateTodo = (data) => new Todo(data, "#todo-template").getView();
 
-// Counter
-const counter = new TodoCounter(initialTodos, ".todos__counter");
+// Counter (recompute-from-DOM version; selectors match your HTML)
+const counter = new TodoCounter(".counter__text", ".todos__list");
 
-// Section: pass initialTodos (NOT []), and a renderer that creates & adds one item
-let section; // need hoist for renderer closure
+// Section: pass initialTodos, and a renderer that creates & adds one item
+let section; // hoisted for closure use inside renderer
 section = new Section({
   items: initialTodos,
   renderer: (item) => {
     const el = generateTodo(item);
 
-    // bridge checkbox + delete -> counter updates
+    // Wire counter updates
     const checkbox = el.querySelector(".todo__completed");
-    const delBtn = el.querySelector(".todo__delete-btn");
+    const delBtn   = el.querySelector(".todo__delete-btn");
 
     if (checkbox) {
-      // reflect initial state to counter (already counted in ctor, so only react to changes)
-      checkbox.addEventListener("change", (e) => {
-        counter.updateCompleted(e.target.checked ? true : false);
+      checkbox.addEventListener("change", () => {
+        counter.updateFromDom();
       });
     }
 
     if (delBtn) {
       delBtn.addEventListener("click", () => {
-        // if it was completed, decrement completed; always decrement total
-        const wasCompleted = checkbox && checkbox.checked;
-        if (wasCompleted) counter.updateCompleted(false);
-        counter.updateTotal(false);
+        // Todo removes itself; count after DOM updates
+        queueMicrotask(() => counter.updateFromDom());
       }, { once: true });
     }
 
     section.addItem(el);
+    counter.updateFromDom(); // refresh after append
   },
   containerSelector: ".todos__list",
 });
 
-// paint initial
+// initial paint
 section.renderItems();
+counter.updateFromDom(); // ensure in-sync on load
 
-// Validators (unchanged)
+// Validators
 const addTodoPopupSelector = "#add-todo-popup";
 const addTodoFormEl = document.querySelector(`${addTodoPopupSelector} .popup__form`);
 const addTodoValidator = new FormValidator(validationConfig, addTodoFormEl);
@@ -80,20 +79,18 @@ const addTodoPopup = new PopupWithForm(addTodoPopupSelector, (formValues) => {
   const checkbox = el.querySelector(".todo__completed");
   const delBtn = el.querySelector(".todo__delete-btn");
   if (checkbox) {
-    checkbox.addEventListener("change", (e) => {
-      counter.updateCompleted(e.target.checked ? true : false);
+    checkbox.addEventListener("change", () => {
+      counter.updateFromDom();
     });
   }
   if (delBtn) {
     delBtn.addEventListener("click", () => {
-      const wasCompleted = checkbox && checkbox.checked;
-      if (wasCompleted) counter.updateCompleted(false);
-      counter.updateTotal(false);
+      queueMicrotask(() => counter.updateFromDom());
     }, { once: true });
   }
 
   section.addItem(el);
-  counter.updateTotal(true);
+  counter.updateFromDom(); // added → recount
 
   // successful submit: reset + validator reset + close
   addTodoFormEl.reset();
@@ -113,7 +110,7 @@ addTodoButton.addEventListener("click", () => {
   addTodoPopup.open();
 });
 
-// ---- date validation (your same logic, just reuse existing code) ----
+// ---- date validation (unchanged logic) ----
 const dateInput = addTodoFormEl.querySelector('#todo-date');
 function validateDate() {
   dateInput.setCustomValidity('');
