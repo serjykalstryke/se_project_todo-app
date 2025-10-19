@@ -3,97 +3,120 @@ import { v4 as uuidv4 } from 'https://jspm.dev/uuid';
 import { initialTodos, validationConfig } from "../utils/constants.js";
 import Todo from "../components/Todo.js";
 import FormValidator from "../components/FormValidator.js";
+import Section from "../components/Section.js";
+import PopupWithForm from "../components/PopupWithForm.js";
+import TodoCounter from "../components/TodoCounter.js";
 
-// DOM Elements
+// DOM
 const addTodoButton = document.querySelector(".button_action_add");
-const addTodoPopup = document.querySelector("#add-todo-popup");
-const addTodoForm = addTodoPopup.querySelector(".popup__form");
-const addTodoCloseBtn = addTodoPopup.querySelector(".popup__close");
-const todosList = document.querySelector(".todos__list");
 
-const openModal = (modal) => {
-  modal.classList.add("popup_visible");
-};
+// build a Todo element from data
+const generateTodo = (data) => new Todo(data, "#todo-template").getView();
 
-// ⬇️ Close now only hides the popup; no reset here per spec
-const closeModal = (modal) => {
-  modal.classList.remove("popup_visible");
-};
+// Counter
+const counter = new TodoCounter(initialTodos, ".todos__counter");
 
-const generateTodoValidator = (config, form) => {
-  const formValidator = new FormValidator(config, form);
-  formValidator.enableValidation();
-  return formValidator;
-};
+// Section: pass initialTodos (NOT []), and a renderer that creates & adds one item
+let section; // need hoist for renderer closure
+section = new Section({
+  items: initialTodos,
+  renderer: (item) => {
+    const el = generateTodo(item);
 
-const addTodoValidator = generateTodoValidator(validationConfig, addTodoForm);
+    // bridge checkbox + delete -> counter updates
+    const checkbox = el.querySelector(".todo__completed");
+    const delBtn = el.querySelector(".todo__delete-btn");
 
-const generateTodo = (data) => {
-  const todo = new Todo(data, "#todo-template");
-  return todo.getView();
-};
+    if (checkbox) {
+      // reflect initial state to counter (already counted in ctor, so only react to changes)
+      checkbox.addEventListener("change", (e) => {
+        counter.updateCompleted(e.target.checked ? true : false);
+      });
+    }
 
-// ⬇️ DRY helper
-const renderTodo = (item) => {
-  const el = generateTodo(item);
-  todosList.append(el);
-};
+    if (delBtn) {
+      delBtn.addEventListener("click", () => {
+        // if it was completed, decrement completed; always decrement total
+        const wasCompleted = checkbox && checkbox.checked;
+        if (wasCompleted) counter.updateCompleted(false);
+        counter.updateTotal(false);
+      }, { once: true });
+    }
 
-// Open
-addTodoButton.addEventListener("click", () => {
-  addTodoValidator.resetValidation(); // okay to clear errors when opening
-  openModal(addTodoPopup);
+    section.addItem(el);
+  },
+  containerSelector: ".todos__list",
 });
 
-// Manual close preserves current input (no reset)
-addTodoCloseBtn.addEventListener("click", () => {
-  closeModal(addTodoPopup);
-});
+// paint initial
+section.renderItems();
 
-// Submit
-addTodoForm.addEventListener("submit", (evt) => {
-  evt.preventDefault();
+// Validators (unchanged)
+const addTodoPopupSelector = "#add-todo-popup";
+const addTodoFormEl = document.querySelector(`${addTodoPopupSelector} .popup__form`);
+const addTodoValidator = new FormValidator(validationConfig, addTodoFormEl);
+addTodoValidator.enableValidation();
 
-  // If invalid, let validator surface messages
-  if (!addTodoForm.checkValidity()) {
-    [...addTodoForm.querySelectorAll(validationConfig.inputSelector)]
+// Popup with form submit callback
+const addTodoPopup = new PopupWithForm(addTodoPopupSelector, (formValues) => {
+  // run native validity UI if needed
+  if (!addTodoFormEl.checkValidity()) {
+    [...addTodoFormEl.querySelectorAll(validationConfig.inputSelector)]
       .forEach((i) => addTodoValidator.validateField(i));
     return;
   }
 
-  const name = evt.target.name.value.trim();
-  const dateStr = evt.target.date.value;
-
-  // Optional date: store null if empty (avoids Invalid Date)
+  const id = uuidv4();
+  const name = formValues.name;
+  const dateStr = formValues.date;
   const date = dateStr ? new Date(dateStr) : null;
 
-  const id = uuidv4();
-
-  // ⬇️ include completed default
   const values = { id, name, date, completed: false };
 
-  renderTodo(values);
+  // create & add one card through Section API
+  const el = generateTodo(values);
 
-  // ⬇️ Per spec: reset ONLY after successful submission
-  addTodoForm.reset();
-  // clear any custom validity (e.g., date)
-  Array.from(addTodoForm.elements).forEach((el) => {
-    if (typeof el.setCustomValidity === "function") el.setCustomValidity("");
+  // wire counter updates for this new element
+  const checkbox = el.querySelector(".todo__completed");
+  const delBtn = el.querySelector(".todo__delete-btn");
+  if (checkbox) {
+    checkbox.addEventListener("change", (e) => {
+      counter.updateCompleted(e.target.checked ? true : false);
+    });
+  }
+  if (delBtn) {
+    delBtn.addEventListener("click", () => {
+      const wasCompleted = checkbox && checkbox.checked;
+      if (wasCompleted) counter.updateCompleted(false);
+      counter.updateTotal(false);
+    }, { once: true });
+  }
+
+  section.addItem(el);
+  counter.updateTotal(true);
+
+  // successful submit: reset + validator reset + close
+  addTodoFormEl.reset();
+  Array.from(addTodoFormEl.elements).forEach((el2) => {
+    if (typeof el2.setCustomValidity === "function") el2.setCustomValidity("");
   });
   addTodoValidator.resetValidation();
-
-  closeModal(addTodoPopup);
+  addTodoPopup.close();
 });
 
-// Seed initial items via the same helper (DRY)
-initialTodos.forEach(renderTodo);
+// attach popup listeners (close btn + overlay + submit)
+addTodoPopup.setEventListeners();
 
-// --- Date validation (unchanged from your working version) ---
-const dateInput = addTodoForm.querySelector('#todo-date');
+// Open handler stays in index.js per spec
+addTodoButton.addEventListener("click", () => {
+  addTodoValidator.resetValidation();
+  addTodoPopup.open();
+});
 
+// ---- date validation (your same logic, just reuse existing code) ----
+const dateInput = addTodoFormEl.querySelector('#todo-date');
 function validateDate() {
   dateInput.setCustomValidity('');
-
   const val = dateInput.value;
 
   if (!val && dateInput.validity.badInput) {
@@ -102,12 +125,9 @@ function validateDate() {
   }
 
   if (!val) {
-    const err = addTodoForm.querySelector('#todo-date-error');
+    const err = addTodoFormEl.querySelector('#todo-date-error');
     dateInput.classList.remove(validationConfig.inputErrorClass);
-    if (err) {
-      err.textContent = '';
-      err.classList.remove(validationConfig.errorClass);
-    }
+    if (err) { err.textContent = ''; err.classList.remove(validationConfig.errorClass); }
     requestAnimationFrame(() => addTodoValidator.validateField(dateInput));
     return;
   }
@@ -129,7 +149,6 @@ function validateDate() {
 
   addTodoValidator.validateField(dateInput);
 }
-
 ['input','change','focusout'].forEach(evt =>
   dateInput.addEventListener(evt, validateDate)
 );
