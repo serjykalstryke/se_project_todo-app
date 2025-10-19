@@ -25,7 +25,7 @@ section = new Section({
 
     // Wire counter updates
     const checkbox = el.querySelector(".todo__completed");
-    const delBtn   = el.querySelector(".todo__delete-btn");
+    const delBtn = el.querySelector(".todo__delete-btn");
 
     if (checkbox) {
       checkbox.addEventListener("change", () => {
@@ -146,6 +146,6 @@ function validateDate() {
 
   addTodoValidator.validateField(dateInput);
 }
-['input','change','focusout'].forEach(evt =>
+['input', 'change', 'focusout'].forEach(evt =>
   dateInput.addEventListener(evt, validateDate)
 );
