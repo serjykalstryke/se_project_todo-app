@@ -2,7 +2,6 @@
 import Popup from "./Popup.js";
 
 class PopupWithForm extends Popup {
-  // handleFormSubmit: (formValues) => void
   constructor(popupSelector, handleFormSubmit) {
     super(popupSelector);
     this._handleFormSubmit = handleFormSubmit;
@@ -22,11 +21,6 @@ class PopupWithForm extends Popup {
       evt.preventDefault();
       this._handleFormSubmit(this._getInputValues());
     });
-  }
-
-  close() {
-    super.close();
-    // per spec you can reset after successful submit in index.js; we won’t reset here automatically
   }
 }
 

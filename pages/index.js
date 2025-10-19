@@ -13,42 +13,54 @@ const addTodoButton = document.querySelector(".button_action_add");
 // build a Todo element from data
 const generateTodo = (data) => new Todo(data, "#todo-template").getView();
 
-// Counter (recompute-from-DOM version; selectors match your HTML)
-const counter = new TodoCounter(".counter__text", ".todos__list");
+// Counter (spec API: (todos, selector))
+const counter = new TodoCounter(initialTodos, ".counter__text");
 
-// Section: pass initialTodos, and a renderer that creates & adds one item
-let section; // hoisted for closure use inside renderer
+// Section (renderer creates & adds one item; no counting during initial render)
+let section;
 section = new Section({
   items: initialTodos,
-  renderer: (item) => {
-    const el = generateTodo(item);
-
-    // Wire counter updates
-    const checkbox = el.querySelector(".todo__completed");
-    const delBtn = el.querySelector(".todo__delete-btn");
-
-    if (checkbox) {
-      checkbox.addEventListener("change", () => {
-        counter.updateFromDom();
-      });
-    }
-
-    if (delBtn) {
-      delBtn.addEventListener("click", () => {
-        // Todo removes itself; count after DOM updates
-        queueMicrotask(() => counter.updateFromDom());
-      }, { once: true });
-    }
-
-    section.addItem(el);
-    counter.updateFromDom(); // refresh after append
-  },
+  renderer: (item) => renderTodo(item, { countDelta: false }),
   containerSelector: ".todos__list",
 });
 
-// initial paint
+// DRY helper: create, wire events, append via Section, optionally update counter
+function renderTodo(item, { countDelta } = { countDelta: false }) {
+  const el = generateTodo(item);
+
+  const checkbox = el.querySelector(".todo__completed");
+  const deleteBtn = el.querySelector(".todo__delete-btn");
+
+  if (checkbox) {
+    checkbox.addEventListener("change", (e) => {
+      // if now checked -> increment completed; else decrement
+      counter.updateCompleted(!!e.target.checked);
+    });
+  }
+
+  if (deleteBtn) {
+    deleteBtn.addEventListener(
+      "click",
+      () => {
+        const wasCompleted = checkbox && checkbox.checked;
+        if (wasCompleted) counter.updateCompleted(false);
+        counter.updateTotal(false);
+        // Todo element removes itself inside Todo.js
+      },
+      { once: true }
+    );
+  }
+
+  section.addItem(el);
+
+  // If this is a *newly created* todo, bump total by 1
+  if (countDelta) counter.updateTotal(true);
+
+  return el;
+}
+
+// Initial paint
 section.renderItems();
-counter.updateFromDom(); // ensure in-sync on load
 
 // Validators
 const addTodoPopupSelector = "#add-todo-popup";
@@ -58,7 +70,6 @@ addTodoValidator.enableValidation();
 
 // Popup with form submit callback
 const addTodoPopup = new PopupWithForm(addTodoPopupSelector, (formValues) => {
-  // run native validity UI if needed
   if (!addTodoFormEl.checkValidity()) {
     [...addTodoFormEl.querySelectorAll(validationConfig.inputSelector)]
       .forEach((i) => addTodoValidator.validateField(i));
@@ -72,30 +83,13 @@ const addTodoPopup = new PopupWithForm(addTodoPopupSelector, (formValues) => {
 
   const values = { id, name, date, completed: false };
 
-  // create & add one card through Section API
-  const el = generateTodo(values);
-
-  // wire counter updates for this new element
-  const checkbox = el.querySelector(".todo__completed");
-  const delBtn = el.querySelector(".todo__delete-btn");
-  if (checkbox) {
-    checkbox.addEventListener("change", () => {
-      counter.updateFromDom();
-    });
-  }
-  if (delBtn) {
-    delBtn.addEventListener("click", () => {
-      queueMicrotask(() => counter.updateFromDom());
-    }, { once: true });
-  }
-
-  section.addItem(el);
-  counter.updateFromDom(); // added → recount
+  // Create + wire + append + update counter totals
+  renderTodo(values, { countDelta: true });
 
   // successful submit: reset + validator reset + close
   addTodoFormEl.reset();
-  Array.from(addTodoFormEl.elements).forEach((el2) => {
-    if (typeof el2.setCustomValidity === "function") el2.setCustomValidity("");
+  Array.from(addTodoFormEl.elements).forEach((formElement) => {
+    if (typeof formElement.setCustomValidity === "function") formElement.setCustomValidity("");
   });
   addTodoValidator.resetValidation();
   addTodoPopup.close();

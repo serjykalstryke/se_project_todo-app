@@ -1,21 +1,28 @@
 // components/TodoCounter.js
 class TodoCounter {
-  // selector: text node for counter (".counter__text")
-  // containerSelector: list container (".todos__list")
-  constructor(selector, containerSelector) {
-    this._element = document.querySelector(selector);
-    this._container = document.querySelector(containerSelector);
-    this.updateFromDom();
+  // todos: initial array; elementSelector: CSS selector for counter text (".counter__text")
+  constructor(todos, elementSelector) {
+    this._element = document.querySelector(elementSelector);
+    this._completed = Array.isArray(todos) ? todos.filter(t => !!t.completed).length : 0;
+    this._total = Array.isArray(todos) ? todos.length : 0;
+    this._updateText();
   }
 
-  updateFromDom = () => {
-    const items = Array.from(this._container.querySelectorAll("li.todo"));
-    const completed = items.filter(
-      (el) => el.querySelector(".todo__completed")?.checked
-    ).length;
+  // Call when a checkbox is toggled ON (true) or OFF (false)
+  updateCompleted = (increment) => {
+    this._completed += increment ? 1 : -1;
+    if (this._completed < 0) this._completed = 0;
+    if (this._completed > this._total) this._completed = this._total;
+    this._updateText();
+  };
 
-    this._total = items.length;
-    this._completed = completed;
+  // Call on create (true) / delete (false)
+  updateTotal = (increment) => {
+    this._total += increment ? 1 : -1;
+    if (!increment && this._completed > this._total) {
+      this._completed = this._total;
+    }
+    if (this._total < 0) this._total = 0;
     this._updateText();
   };
 
