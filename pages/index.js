@@ -17,8 +17,7 @@ const generateTodo = (data) => new Todo(data, "#todo-template").getView();
 const counter = new TodoCounter(initialTodos, ".counter__text");
 
 // Section (renderer creates & adds one item; no counting during initial render)
-let section;
-section = new Section({
+const section = new Section({
   items: initialTodos,
   renderer: (item) => renderTodo(item, { countDelta: false }),
   containerSelector: ".todos__list",
